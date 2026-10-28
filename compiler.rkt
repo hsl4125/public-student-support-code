@@ -61,10 +61,14 @@
   (lambda (e)
     (match e
       [(Var x)
-       (error "TODO: code goes here (uniquify-exp Var)")]
+       (Var (lookup x env))]
       [(Int n) (Int n)]
       [(Let x e body)
-       (error "TODO: code goes here (uniquify-exp Let)")]
+       (define new-x (gensym x))
+       (Let new-x
+            ((uniquify-exp env) e)
+            ((uniquify-exp (extend-env env x new-x)) body))
+       ]
       [(Prim op es)
        (Prim op (for/list ([e es]) ((uniquify-exp env) e)))])))
 
@@ -102,12 +106,12 @@
 ;; must be named "compiler.rkt"
 (define compiler-passes
   `(
-     ;; Uncomment the following passes as you finish them.
-     ;; ("uniquify" ,uniquify ,interp_Lvar ,type-check-Lvar)
-     ;; ("remove complex opera*" ,remove-complex-opera* ,interp_Lvar ,type-check-Lvar)
-     ;; ("explicate control" ,explicate-control ,interp-Cvar ,type-check-Cvar)
-     ;; ("instruction selection" ,select-instructions ,interp-pseudo-x86-0)
-     ;; ("assign homes" ,assign-homes ,interp-x86-0)
-     ;; ("patch instructions" ,patch-instructions ,interp-x86-0)
-     ;; ("prelude-and-conclusion" ,prelude-and-conclusion ,interp-x86-0)
-     ))
+    ;; Uncomment the following passes as you finish them.
+    ("uniquify" ,uniquify ,interp_Lvar ,type-check-Lvar)
+    ;; ("remove complex opera*" ,remove-complex-opera* ,interp_Lvar ,type-check-Lvar)
+    ;; ("explicate control" ,explicate-control ,interp-Cvar ,type-check-Cvar)
+    ;; ("instruction selection" ,select-instructions ,interp-pseudo-x86-0)
+    ;; ("assign homes" ,assign-homes ,interp-x86-0)
+    ;; ("patch instructions" ,patch-instructions ,interp-x86-0)
+    ;; ("prelude-and-conclusion" ,prelude-and-conclusion ,interp-x86-0)
+    ))
