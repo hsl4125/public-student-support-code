@@ -77,9 +77,50 @@
   (match p
     [(Program info e) (Program info ((uniquify-exp '()) e))]))
 
+
+;; rco-atom : exp -> (values atom bindings)
+;; Convert e to an atom, returning the temporary bindings needed for the conversion.
+(define (rco-atom e)
+  (define (atom-exp? e)
+    (or (Int? e) (Var? e)))
+  (cond
+    [(atom-exp? e)
+     (values e '())]
+    [else
+     (define tmp (gensym 'tmp))
+     (values (Var tmp)
+             (list (cons tmp (rco-exp e))))]))
+
+;; rco-exp : exp -> exp^mon
+;; Remove complex operands from e by introducing temporary Let bindings.
+(define (rco-exp e)
+  (define (rco-args es)
+    (match es
+      ['() (values '() '())]
+      [(cons e rest)
+       (define-values (atom bindings) (rco-atom e))
+       (define-values (atoms rest-bindings) (rco-args rest))
+       (values (cons atom atoms)
+               (append bindings rest-bindings))]))
+  (define (wrap-rco-bindings bindings body)
+    (foldl (lambda (binding body)
+             (Let (car binding) (cdr binding) body))
+           body
+           (reverse bindings)))
+  (match e
+    [(Int n) (Int n)]
+    [(Var x) (Var x)]
+    [(Let x e body)
+     (Let x (rco-exp e) (rco-exp body))]
+    [(Prim op es)
+     (define-values (atoms bindings) (rco-args es))
+     (wrap-rco-bindings bindings (Prim op atoms))]))
+
 ;; remove-complex-opera* : Lvar -> Lvar^mon
 (define (remove-complex-opera* p)
-  (error "TODO: code goes here (remove-complex-opera*)"))
+  (match p
+    [(Program info e)
+     (Program info (rco-exp e))]))
 
 ;; explicate-control : Lvar^mon -> Cvar
 (define (explicate-control p)
@@ -108,7 +149,7 @@
   `(
     ;; Uncomment the following passes as you finish them.
     ("uniquify" ,uniquify ,interp_Lvar ,type-check-Lvar)
-    ;; ("remove complex opera*" ,remove-complex-opera* ,interp_Lvar ,type-check-Lvar)
+    ("remove complex opera*" ,remove-complex-opera* ,interp_Lvar ,type-check-Lvar)
     ;; ("explicate control" ,explicate-control ,interp-Cvar ,type-check-Cvar)
     ;; ("instruction selection" ,select-instructions ,interp-pseudo-x86-0)
     ;; ("assign homes" ,assign-homes ,interp-x86-0)
