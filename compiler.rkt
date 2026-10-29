@@ -158,7 +158,63 @@
 
 ;; select-instructions : Cvar -> x86var
 (define (select-instructions p)
-  (error "TODO: code goes here (select-instructions)"))
+  (define (atm e)
+    (match e
+      [(Var var)
+       (Var var)]
+      [(Int n)
+       (Imm n)]
+      [_ (error "atm unhandled case" e)]))
+  (define (stmt s)
+    (match s
+      [(Assign (Var x) (Int n))
+       (list (Instr 'movq (list (Imm n) (Var x))))]
+      [(Assign (Var x) (Var y))
+       (list (Instr 'movq (list (Var y) (Var x))))]
+      [(Assign (Var x) (Prim 'read '()))
+       (list (Callq 'read_int 0)
+             (Instr 'movq (list (Reg 'rax) (Var x))))]
+      [(Assign (Var x) (Prim '+ (list e1 e2)))
+       (list (Instr 'movq (list (atm e1) (Var x)))
+             (Instr 'addq (list (atm e2) (Var x))))]
+      [(Assign (Var x) (Prim '- (list e)))
+       (list (Instr 'movq (list (Imm 0) (Var x)))
+             (Instr 'subq (list (atm e) (Var x))))]
+      [(Assign (Var x) (Prim '- (list e1 e2)))
+       (list (Instr 'movq (list (atm e1) (Var x)))
+             (Instr 'subq (list (atm e2) (Var x))))]
+      [_ (error "stmt unhandled case" s)]))
+  (define (tail e)
+    (match e
+      [(Seq s t)
+       (append (stmt s) (tail t))]
+      [(Return (Int n))
+       (list (Instr 'movq (list (Imm n) (Reg 'rax)))
+             (Jmp 'conclusion))]
+      [(Return (Var x))
+       (list (Instr 'movq (list (Var x) (Reg 'rax)))
+             (Jmp 'conclusion))]
+      [(Return (Prim 'read '()))
+       (list (Callq 'read_int 0)
+             (Jmp 'conclusion))]
+      [(Return (Prim '+ (list e1 e2)))
+       (list (Instr 'movq (list (atm e1) (Reg 'rax)))
+             (Instr 'addq (list (atm e2) (Reg 'rax)))
+             (Jmp 'conclusion))]
+      [(Return (Prim '- (list e)))
+       (list (Instr 'movq (list (Imm 0) (Reg 'rax)))
+             (Instr 'subq (list (atm e) (Reg 'rax)))
+             (Jmp 'conclusion))]
+      [(Return (Prim '- (list e1 e2)))
+       (list (Instr 'movq (list (atm e1) (Reg 'rax)))
+             (Instr 'subq (list (atm e2) (Reg 'rax)))
+             (Jmp 'conclusion))]
+      [_ (error "tail unhandled case" e)]))
+  (match p
+    [(CProgram info (list (cons 'start block-tail)))
+     (X86Program
+      info
+      (list (cons 'start (Block '() (tail block-tail)))))]))
 
 ;; assign-homes : x86var -> x86var
 (define (assign-homes p)
@@ -181,7 +237,7 @@
     ("uniquify" ,uniquify ,interp_Lvar ,type-check-Lvar)
     ("remove complex opera*" ,remove-complex-opera* ,interp_Lvar ,type-check-Lvar)
     ("explicate control" ,explicate-control ,interp-Cvar ,type-check-Cvar)
-    ;; ("instruction selection" ,select-instructions ,interp-pseudo-x86-0)
+    ("instruction selection" ,select-instructions ,interp-pseudo-x86-0)
     ;; ("assign homes" ,assign-homes ,interp-x86-0)
     ;; ("patch instructions" ,patch-instructions ,interp-x86-0)
     ;; ("prelude-and-conclusion" ,prelude-and-conclusion ,interp-x86-0)

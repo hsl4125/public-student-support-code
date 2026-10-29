@@ -1,0 +1,8 @@
+(let ([literal 5])
+  (let ([copy literal])
+    (let ([input (read)])
+      (let ([sum (+ copy 2)])
+        (let ([with-input (+ sum input)])
+          (let ([negative (- with-input)])
+            (let ([difference (- with-input negative)])
+              difference)))))))
