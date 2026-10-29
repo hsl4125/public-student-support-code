@@ -122,9 +122,39 @@
     [(Program info e)
      (Program info (rco-exp e))]))
 
+
+;; explicate-assign
+(define (explicate-assign e x cont)
+  (match e
+    [(Var y)
+     (Seq (Assign (Var x) (Var y)) cont)]
+    [(Int n)
+     (Seq (Assign (Var x) (Int n)) cont)]
+    [(Let y rhs body)
+     (explicate-assign rhs y (explicate-assign body x cont))]
+    [(Prim op es)
+     (Seq (Assign (Var x) (Prim op es)) cont)]
+    [_ (error "explicate_assign unhandled case" e)]))
+
+;; explicate-tail
+(define (explicate-tail e)
+  (match e
+    [(Int n)
+     (Return (Int n))]
+    [(Var x)
+     (Return (Var x))]
+    [(Let x rhs body)
+     (explicate-assign rhs x (explicate-tail body))]
+    [(Prim op es)
+     (Return (Prim op es))]
+    [_ (error "explicate_tail unhandled case" e)]))
+
 ;; explicate-control : Lvar^mon -> Cvar
 (define (explicate-control p)
-  (error "TODO: code goes here (explicate-control)"))
+  (match p
+    [(Program info e)
+     (CProgram info
+               (list (cons 'start (explicate-tail e))))]))
 
 ;; select-instructions : Cvar -> x86var
 (define (select-instructions p)
@@ -150,7 +180,7 @@
     ;; Uncomment the following passes as you finish them.
     ("uniquify" ,uniquify ,interp_Lvar ,type-check-Lvar)
     ("remove complex opera*" ,remove-complex-opera* ,interp_Lvar ,type-check-Lvar)
-    ;; ("explicate control" ,explicate-control ,interp-Cvar ,type-check-Cvar)
+    ("explicate control" ,explicate-control ,interp-Cvar ,type-check-Cvar)
     ;; ("instruction selection" ,select-instructions ,interp-pseudo-x86-0)
     ;; ("assign homes" ,assign-homes ,interp-x86-0)
     ;; ("patch instructions" ,patch-instructions ,interp-x86-0)
