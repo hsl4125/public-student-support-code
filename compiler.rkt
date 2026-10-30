@@ -219,12 +219,32 @@
   (match p
     [(CProgram info (list (cons 'start block-tail)))
      (X86Program
-      info
-      (list (cons 'start (Block '() (tail block-tail)))))]))
+       info
+       (list (cons 'start (Block '() (tail block-tail)))))]))
 
 ;; assign-homes : x86var -> x86var
 (define (assign-homes p)
-  (error "TODO: code goes here (assign-homes)"))
+  (match p
+    [(X86Program info (list (cons 'start (Block block-info instructions))))
+     (define locals-types (dict-ref info 'locals-types))
+     (define stack-space
+       (for/list ([local-type (in-list locals-types)]
+                  [index (in-naturals 1)])
+         (cons (car local-type) (* -8 index))))
+     (define homes (make-hash stack-space))
+     (define (home arg)
+       (match arg
+         [(Var x) (Deref 'rbp (hash-ref homes x))]
+         [_ arg]))
+     (define new-instructions
+       (for/list ([instruction (in-list instructions)])
+         (match instruction
+           [(Instr name args)
+            (Instr name (map home args))]
+           [_ instruction])))
+     (X86Program (dict-set info 'stack-space stack-space)
+                 (list (cons 'start (Block block-info new-instructions))))]
+    [_ (error 'assign-homes "expected an X86Program, got ~a" p)]))
 
 ;; patch-instructions : x86var -> x86int
 (define (patch-instructions p)
@@ -244,7 +264,7 @@
     ("remove complex opera*" ,remove-complex-opera* ,interp_Lvar ,type-check-Lvar)
     ("explicate control" ,explicate-control ,interp-Cvar ,type-check-Cvar)
     ("instruction selection" ,select-instructions ,interp-pseudo-x86-0)
-    ;; ("assign homes" ,assign-homes ,interp-x86-0)
+    ("assign homes" ,assign-homes ,interp-x86-0)
     ;; ("patch instructions" ,patch-instructions ,interp-x86-0)
     ;; ("prelude-and-conclusion" ,prelude-and-conclusion ,interp-x86-0)
     ))
