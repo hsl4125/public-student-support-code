@@ -227,11 +227,11 @@
   (match p
     [(X86Program info (list (cons 'start (Block block-info instructions))))
      (define locals-types (dict-ref info 'locals-types))
-     (define stack-space
-       (for/list ([local-type (in-list locals-types)]
+     (define homes
+       (for/hash ([local-type (in-list locals-types)]
                   [index (in-naturals 1)])
-         (cons (car local-type) (* -8 index))))
-     (define homes (make-hash stack-space))
+         (values (car local-type) (* -8 index))))
+     (define stack-space (align (* 8 (length locals-types)) 16))
      (define (home arg)
        (match arg
          [(Var x) (Deref 'rbp (hash-ref homes x))]
