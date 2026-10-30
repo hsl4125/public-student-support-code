@@ -252,6 +252,11 @@
     [(X86Program info (list (cons 'start (Block block-info instructions))))
      (define (patched instr)
        (match instr
+         [(Instr name (list (Imm n) (Deref reg offset)))
+          #:when (or (>= n (expt 2 31))
+                     (< n (- (expt 2 31))))
+          (list (Instr 'movq (list (Imm n) (Reg 'rax)))
+                (Instr name (list (Reg 'rax) (Deref reg offset))))]
          [(Instr 'movq (list (Deref 'rbp src) (Deref 'rbp dst)))
           (list (Instr 'movq (list (Deref 'rbp src) (Reg 'rax)))
                 (Instr 'movq (list (Reg 'rax) (Deref 'rbp dst))))]
