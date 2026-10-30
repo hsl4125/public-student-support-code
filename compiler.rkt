@@ -174,6 +174,12 @@
       [(Assign (Var x) (Prim 'read '()))
        (list (Callq 'read_int 0)
              (Instr 'movq (list (Reg 'rax) (Var x))))]
+      [(Assign (Var x) (Prim '+ (list (Var y) e2)))
+       #:when (eq? x y)
+       (list (Instr 'addq (list (atm e2) (Var x))))]
+      [(Assign (Var x) (Prim '+ (list e1 (Var y))))
+       #:when (eq? x y)
+       (list (Instr 'addq (list (atm e1) (Var x))))]
       [(Assign (Var x) (Prim '+ (list e1 e2)))
        (list (Instr 'movq (list (atm e1) (Var x)))
              (Instr 'addq (list (atm e2) (Var x))))]
