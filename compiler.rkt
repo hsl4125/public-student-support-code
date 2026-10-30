@@ -248,7 +248,25 @@
 
 ;; patch-instructions : x86var -> x86int
 (define (patch-instructions p)
-  (error "TODO: code goes here (patch-instructions)"))
+  (match p
+    [(X86Program info (list (cons 'start (Block block-info instructions))))
+     (define (patched instr)
+       (match instr
+         [(Instr 'movq (list (Deref 'rbp src) (Deref 'rbp dst)))
+          (list (Instr 'movq (list (Deref 'rbp src) (Reg 'rax)))
+                (Instr 'movq (list (Reg 'rax) (Deref 'rbp dst))))]
+         [(Instr 'addq (list (Deref 'rbp src) (Deref 'rbp dst)))
+          (list (Instr 'movq (list (Deref 'rbp dst) (Reg 'rax)))
+                (Instr 'addq (list (Deref 'rbp src) (Reg 'rax)))
+                (Instr 'movq (list (Reg 'rax) (Deref 'rbp dst))))]
+         [(Instr 'subq (list (Deref 'rbp src) (Deref 'rbp dst)))
+          (list (Instr 'movq (list (Deref 'rbp dst) (Reg 'rax)))
+                (Instr 'subq (list (Deref 'rbp src) (Reg 'rax)))
+                (Instr 'movq (list (Reg 'rax) (Deref 'rbp dst))))]
+         [_ (list instr)]))
+     (define patched-all
+       (append-map patched instructions))
+     (X86Program info (list (cons 'start (Block block-info patched-all))))]))
 
 ;; prelude-and-conclusion : x86int -> x86int
 (define (prelude-and-conclusion p)
@@ -265,6 +283,6 @@
     ("explicate control" ,explicate-control ,interp-Cvar ,type-check-Cvar)
     ("instruction selection" ,select-instructions ,interp-pseudo-x86-0)
     ("assign homes" ,assign-homes ,interp-x86-0)
-    ;; ("patch instructions" ,patch-instructions ,interp-x86-0)
+    ("patch instructions" ,patch-instructions ,interp-x86-0)
     ;; ("prelude-and-conclusion" ,prelude-and-conclusion ,interp-x86-0)
     ))
