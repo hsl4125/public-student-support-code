@@ -178,8 +178,8 @@
        (list (Instr 'movq (list (atm e1) (Var x)))
              (Instr 'addq (list (atm e2) (Var x))))]
       [(Assign (Var x) (Prim '- (list e)))
-       (list (Instr 'movq (list (Imm 0) (Var x)))
-             (Instr 'subq (list (atm e) (Var x))))]
+       (list (Instr 'movq (list (atm e) (Var x)))
+             (Instr 'negq (list (Var x))))]
       [(Assign (Var x) (Prim '- (list e1 e2)))
        (list (Instr 'movq (list (atm e1) (Var x)))
              (Instr 'subq (list (atm e2) (Var x))))]
@@ -202,8 +202,8 @@
              (Instr 'addq (list (atm e2) (Reg 'rax)))
              (Jmp 'conclusion))]
       [(Return (Prim '- (list e)))
-       (list (Instr 'movq (list (Imm 0) (Reg 'rax)))
-             (Instr 'subq (list (atm e) (Reg 'rax)))
+       (list (Instr 'movq (list (atm e) (Reg 'rax)))
+             (Instr 'negq (list (Reg 'rax)))
              (Jmp 'conclusion))]
       [(Return (Prim '- (list e1 e2)))
        (list (Instr 'movq (list (atm e1) (Reg 'rax)))
