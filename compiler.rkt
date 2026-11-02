@@ -30,15 +30,46 @@
 
 
 ;; Next we have the partial evaluation pass described in the book.
+(define (pe-residual-parts r)
+  (match r
+    [(Int n) (values n #f)]
+    [(Prim '+ (list (Int n) inert)) (values n inert)]
+    [_ (values 0 r)]))
+
+(define (pe-inert-add r1 r2)
+  (cond
+    [(not r1) r2]
+    [(not r2) r1]
+    [else (Prim '+ (list r1 r2))]))
+
 (define (pe-neg r)
   (match r
-    [(Int n) (Int (fx- 0 n))]
+    [(Int n)
+     (define negated (- n))
+     (if (fixnum? negated)
+         (Int negated)
+         (Prim '- (list r)))]
+    [(Prim '+ (list (Int n) inert))
+     (pe-add (pe-neg (Int n)) (pe-neg inert))]
+    [(Prim '+ (list inert1 inert2))
+     (pe-add (pe-neg inert1) (pe-neg inert2))]
+    [(Prim '- (list inert)) inert]
+    [(Let x rhs body)
+     (Let x rhs (pe-neg body))]
     [_ (Prim '- (list r))]))
 
 (define (pe-add r1 r2)
-  (match* (r1 r2)
-    [((Int n1) (Int n2)) (Int (fx+ n1 n2))]
-    [(_ _) (Prim '+ (list r1 r2))]))
+  (define-values (n1 inert1) (pe-residual-parts r1))
+  (define-values (n2 inert2) (pe-residual-parts r2))
+  (define n (+ n1 n2))
+  (cond
+    [(not (fixnum? n)) (Prim '+ (list r1 r2))]
+    [else
+     (define inert (pe-inert-add inert1 inert2))
+     (cond
+       [(not inert) (Int n)]
+       [(zero? n) inert]
+       [else (Prim '+ (list (Int n) inert))])]))
 
 (define (pe-exp e)
   (match e
@@ -48,10 +79,10 @@
     [(Prim '- (list e1)) (pe-neg (pe-exp e1))]
     [(Prim '+ (list e1 e2)) (pe-add (pe-exp e1) (pe-exp e2))]
     [(Prim '- (list e1 e2)) (pe-add (pe-exp e1) (pe-neg (pe-exp e2)))]
-    [(Let x e body) (Let x (pe-exp e) (pe-exp body))]
+    [(Let x rhs body) (Let x (pe-exp rhs) (pe-exp body))]
     ))
 
-(define (pe-Lint p)
+(define (pe-Lvar p)
   (match p
     [(Program info e) (Program info (pe-exp e))]))
 
@@ -302,7 +333,7 @@
 (define compiler-passes
   `(
     ;; Uncomment the following passes as you finish them.
-    ("pe" ,pe-Lint ,interp_Lvar ,type-check-Lvar)
+    ("partial evaluator" ,pe-Lvar ,interp_Lvar ,type-check-Lvar)
     ("uniquify" ,uniquify ,interp_Lvar ,type-check-Lvar)
     ("remove complex opera*" ,remove-complex-opera* ,interp_Lvar ,type-check-Lvar)
     ("explicate control" ,explicate-control ,interp-Cvar ,type-check-Cvar)
