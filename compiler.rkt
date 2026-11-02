@@ -33,7 +33,7 @@
 (define (pe-neg r)
   (match r
     [(Int n) (Int (fx- 0 n))]
-    [else (Prim '- (list r))]))
+    [_ (Prim '- (list r))]))
 
 (define (pe-add r1 r2)
   (match* (r1 r2)
@@ -43,10 +43,12 @@
 (define (pe-exp e)
   (match e
     [(Int n) (Int n)]
+    [(Var x) (Var x)]
     [(Prim 'read '()) (Prim 'read '())]
     [(Prim '- (list e1)) (pe-neg (pe-exp e1))]
     [(Prim '+ (list e1 e2)) (pe-add (pe-exp e1) (pe-exp e2))]
     [(Prim '- (list e1 e2)) (pe-add (pe-exp e1) (pe-neg (pe-exp e2)))]
+    [(Let x e body) (Let x (pe-exp e) (pe-exp body))]
     ))
 
 (define (pe-Lint p)
@@ -300,6 +302,7 @@
 (define compiler-passes
   `(
     ;; Uncomment the following passes as you finish them.
+    ("pe" ,pe-Lint ,interp_Lvar ,type-check-Lvar)
     ("uniquify" ,uniquify ,interp_Lvar ,type-check-Lvar)
     ("remove complex opera*" ,remove-complex-opera* ,interp_Lvar ,type-check-Lvar)
     ("explicate control" ,explicate-control ,interp-Cvar ,type-check-Cvar)
