@@ -518,32 +518,6 @@
               "expected an X86Program with a start block, got ~a"
               p)]))
 
-#| 
-;; assign-homes : x86var -> x86var
-(define (assign-homes p)
-  (match p
-    [(X86Program info (list (cons 'start (Block block-info instructions))))
-     (define locals-types (dict-ref info 'locals-types))
-     (define homes
-       (for/hash ([local-type (in-list locals-types)]
-                  [index (in-naturals 1)])
-         (values (car local-type) (* -8 index))))
-     (define stack-space (align (* 8 (length locals-types)) 16))
-     (define (home arg)
-       (match arg
-         [(Var x) (Deref 'rbp (hash-ref homes x))]
-         [_ arg]))
-     (define new-instructions
-       (for/list ([instruction (in-list instructions)])
-         (match instruction
-           [(Instr name args)
-            (Instr name (map home args))]
-           [_ instruction])))
-     (X86Program (dict-set info 'stack-space stack-space)
-                 (list (cons 'start (Block block-info new-instructions))))]
-    [_ (error 'assign-homes "expected an X86Program, got ~a" p)]))
-|#
-
 ;; patch-instructions : x86var -> x86int
 (define (patch-instructions p)
   (match p
@@ -587,22 +561,22 @@
      (define prelude
        (Block '()
               (append (list
-                       (Instr 'pushq (list (Reg 'rbp)))
-                       (Instr 'movq (list (Reg 'rsp) (Reg 'rbp))))
+                        (Instr 'pushq (list (Reg 'rbp)))
+                        (Instr 'movq (list (Reg 'rsp) (Reg 'rbp))))
                       (for/list ([register (in-list ordered-callee)])
                         (Instr 'pushq (list (Reg register))))
                       (list
-                       (Instr 'subq (list (Imm stack-space) (Reg 'rsp)))
-                       (Jmp 'start)))))
+                        (Instr 'subq (list (Imm stack-space) (Reg 'rsp)))
+                        (Jmp 'start)))))
      (define conclusion
        (Block '()
               (append (list
-                       (Instr 'addq (list (Imm stack-space) (Reg 'rsp))))
+                        (Instr 'addq (list (Imm stack-space) (Reg 'rsp))))
                       (for/list ([register (in-list (reverse ordered-callee))])
                         (Instr 'popq (list (Reg register))))
                       (list
-                       (Instr 'popq (list (Reg 'rbp)))
-                       (Retq)))))
+                        (Instr 'popq (list (Reg 'rbp)))
+                        (Retq)))))
      (X86Program info (list (cons 'main prelude) (cons 'start start-block) (cons 'conclusion conclusion)))]
     [_ (error 'prelude-and-conclusion "expected an X86Program with a start block, got ~a" p)]))
 
